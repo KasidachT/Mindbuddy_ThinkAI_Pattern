@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "MindBuddy",
+  "version": "1.0.0",
+  "description": "Display User Input Text",
+  "author": "ThinkAI",
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "MindBuddy"
+  },
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  }
+}
