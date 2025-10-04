@@ -88,14 +88,14 @@ function suggestNonToxicText(text) {
     const regex = new RegExp(word, "gi");
     newText = newText.replace(regex, "ดี");
   });
-  console.log("Suggested text (type:", typeof newText, "):", newText);
+  console.log("Suggested text:", newText);
   return newText;
 }
 
 function mockPredict(text) {
   if (typeof text !== "string") return { result: "ข้อมูลไม่ถูกต้อง", toxicWords: [] };
-  const toxicWords = ["โง่", "งี่เง่า", "แย่"];
-  const foundToxicWords = toxicWords.filter((word) => text.toLowerCase().includes(word.toLowerCase()));
+  const toxicWordsList = ["โง่", "งี่เง่า", "แย่"];
+  const foundToxicWords = toxicWordsList.filter((word) => text.toLowerCase().includes(word.toLowerCase()));
   const hasToxic = foundToxicWords.length > 0;
   return {
     result: hasToxic
@@ -105,6 +105,18 @@ function mockPredict(text) {
   };
 }
 
+// ฟังก์ชันนับสถิติ: นับ +1 ต่อการพิมพ์ที่มี toxic อย่างน้อย 1 ประโยค
+function updateToxicCount() {
+  chrome.storage.local.get(["toxicReplacements"], (result) => {
+    let data = result.toxicReplacements || {};
+    let today = new Date().toISOString().split('T')[0];
+    data[today] = (data[today] || 0) + 1;
+    chrome.storage.local.set({ toxicReplacements: data }, () => {
+      console.log(`Updated toxic count for ${today}: ${data[today]} (การพิมพ์ที่มี toxic)`);
+    });
+  });
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.message === "check_toxicity") {
     try {
@@ -112,12 +124,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ error: "ข้อความที่ส่งมาไม่ถูกต้อง" });
         return true;
       }
-
       const prediction = mockPredict(request.text);
+      console.log('Background response:', prediction);
       sendResponse({ result: prediction.result, toxicWords: prediction.toxicWords });
     } catch (error) {
-      console.error("Error:", error);
-      sendResponse({ error: `เกิดข้อผิดพลาดในการตรวจสอบ: ${error.message}` });
+      console.error("Error in mockPredict:", error);
+      sendResponse({ error: `เกิดข้อผิดพลาด: ${error.message}` });
     }
     return true;
   } else if (request.message === "update_result") {
@@ -128,6 +140,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }, () => {
       sendResponse({ status: "updated" });
     });
+    return true;
+  } else if (request.message === "increment_toxic_count") {
+    // รับ message ใหม่จาก content: นับ +1 ต่อการพิมพ์ที่มี toxic
+    updateToxicCount();
+    sendResponse({ status: "count_updated" });
     return true;
   }
 });
